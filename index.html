@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>경최 할 일 보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --bg:#f4f2ec;--surface:#fffdf8;--ink:#2b2a26;--muted:#8a877d;
+    --faint:#b5b2a8;--line:rgba(43,42,38,.10);--line2:rgba(43,42,38,.18);--r:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Pretendard',system-ui,sans-serif;background:var(--bg);color:var(--ink);
+    -webkit-font-smoothing:antialiased;padding:28px 18px 80px;line-height:1.5;}
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  /* gate */
+  #gate{max-width:340px;margin:14vh auto 0;background:var(--surface);
+    border:1px solid var(--line2);border-radius:var(--r);padding:26px 24px;text-align:center;}
+  #gate h1{font-size:19px;font-weight:700;margin-bottom:6px;}
+  #gate p{font-size:13px;color:var(--muted);margin-bottom:16px;}
+  #gate input{width:100%;font-family:inherit;font-size:15px;padding:10px 12px;
+    border:1px solid var(--line2);border-radius:9px;outline:none;margin-bottom:10px;}
+  #gate input:focus{border-color:var(--muted);}
+  #gate button{width:100%;font-family:inherit;font-size:14px;padding:10px;cursor:pointer;
+    background:#2b2a26;color:#fff;border:none;border-radius:9px;}
+  #gate .err{color:#c0392b;font-size:12.5px;min-height:16px;margin-top:8px;}
+
+  header{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:14px;
+    margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--line2);}
+  h1{font-size:25px;font-weight:700;letter-spacing:-.02em;}
+  .sub{font-size:13.5px;color:var(--muted);margin-top:4px;}
+  .progress{text-align:right;}
+  .progress .num{font-size:24px;font-weight:700;}
+  .progress .lab{font-size:12px;color:var(--muted);}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center;}
+  .btn{font-family:inherit;font-size:13px;color:var(--ink);background:var(--surface);
+    border:1px solid var(--line2);border-radius:9px;padding:7px 13px;cursor:pointer;transition:.12s;}
+  .btn:hover{background:#efece4;} .btn:active{transform:scale(.98);}
+  .btn.ghost{background:transparent;border-color:var(--line);color:var(--muted);}
+  #status{font-size:12px;color:var(--faint);margin-left:auto;}
+  #status.ok{color:#3d8168;} #status.warn{color:#b9770e;} #status.busy{color:var(--muted);}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px;align-items:start;}
+  .col{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    padding:16px 16px 12px;border-top:4px solid var(--accent,var(--faint));}
+  .col-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;}
+  .col-title{font-size:15.5px;font-weight:700;letter-spacing:-.01em;color:var(--accent,var(--ink));
+    border:none;background:none;font-family:inherit;outline:none;width:100%;}
+  .col-title:focus{background:rgba(0,0,0,.04);border-radius:6px;}
+  .col-count{font-size:12px;color:var(--faint);font-weight:600;white-space:nowrap;}
+  .col-del{opacity:0;color:var(--faint);background:none;border:none;cursor:pointer;font-size:15px;transition:.12s;padding:2px 4px;}
+  .col:hover .col-del{opacity:.6;} .col-del:hover{opacity:1;color:#c0392b;}
+  ul{list-style:none;}
+  .task{display:flex;align-items:flex-start;gap:9px;padding:5px 4px;border-radius:8px;transition:.1s;}
+  .task:hover{background:rgba(0,0,0,.025);}
+  .cb{appearance:none;-webkit-appearance:none;flex:none;width:17px;height:17px;margin-top:2px;
+    border:1.6px solid var(--line2);border-radius:5px;cursor:pointer;position:relative;transition:.12s;}
+  .cb:hover{border-color:var(--muted);}
+  .cb:checked{background:#3d8168;border-color:#3d8168;}
+  .cb:checked::after{content:"";position:absolute;left:5px;top:1.5px;width:4px;height:9px;
+    border:solid #fff;border-width:0 2px 2px 0;transform:rotate(42deg);}
+  .txt{flex:1;font-size:13.7px;border:none;background:none;outline:none;font-family:inherit;
+    color:var(--ink);resize:none;overflow:hidden;line-height:1.45;padding:1px 0;}
+  .txt:focus{background:rgba(0,0,0,.04);border-radius:5px;}
+  .task.done .txt{text-decoration:line-through;color:var(--faint);}
+  .mk{flex:none;width:17px;margin-top:1px;color:var(--faint);text-align:center;font-size:13px;line-height:1.4;}
+  .note .txt{color:var(--muted);}
+  .x{opacity:0;flex:none;background:none;border:none;cursor:pointer;color:var(--faint);
+    font-size:15px;line-height:1;transition:.12s;padding:0 2px;}
+  .task:hover .x{opacity:.55;} .x:hover{opacity:1;color:#c0392b;}
+  .add{font-size:12.5px;color:var(--muted);background:none;border:none;cursor:pointer;
+    padding:6px 4px;font-family:inherit;margin-top:2px;}
+  .add:hover{color:var(--ink);}
+  .addcol{border:1.5px dashed var(--line2);border-radius:var(--r);background:none;color:var(--muted);
+    font-family:inherit;font-size:14px;cursor:pointer;min-height:90px;display:flex;
+    align-items:center;justify-content:center;transition:.12s;}
+  .addcol:hover{background:rgba(0,0,0,.02);color:var(--ink);border-color:var(--muted);}
+  .hint{font-size:11px;color:var(--faint);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="gate">
+    <h1>경최 할 일 보드</h1>
+    <p>비밀번호를 입력하세요</p>
+    <input id="pwInput" type="password" placeholder="비밀번호" autocomplete="current-password">
+    <button id="pwBtn">열기</button>
+    <div class="err" id="pwErr"></div>
+  </div>
+
+  <div id="app" style="display:none;">
+    <header>
+      <div>
+        <h1>경최 할 일 보드</h1>
+        <div class="sub" id="today"></div>
+      </div>
+      <div class="progress"><div class="num" id="pnum">0</div><div class="lab">완료</div></div>
+    </header>
+    <div class="toolbar">
+      <button class="btn ghost" id="hideDone">완료 항목 숨기기</button>
+      <button class="btn ghost" id="reset">처음 상태로 초기화</button>
+      <span class="hint" style="align-self:center;">· 항목 클릭해서 수정 · 자동 저장</span>
+      <span id="status"></span>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+</div>
+
+<script>
+/* ====== 설정: 본인 Apps Script 웹앱 URL을 여기에 붙여넣으세요 ====== */
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwgSpf-Ato8ceyicv2IEl03wf1u-EPUQSAmyNMh1_uAacCzYOmtlwqy9WKw7lpaSOJy/exec";
+/* ============================================================ */
+
+const CONFIGURED = /^https?:\/\//.test(ENDPOINT) && !/APPS_SCRIPT/.test(ENDPOINT);
+
+const CACHE_KEY = "gc_board_cache";
+let pw = sessionStorage.getItem("gc_pw") || "";
+let state = [];
+let hideDone = false;
+let saveTimer = null;
+let pendingFocus = null;
+
+const DEFAULT = [
+  {title:"오늘 바로", accent:"#c0392b", tasks:[
+    {t:"17시 기장상담 예약자 문자 (업종·매출·특이사항)", d:1},
+    {t:"비뇨기과 진료의뢰서 끊기 (진이 6/17 전)", d:1},
+    {t:"탁감 3군데 발주 — 하이테크·효성·태양 (+추가 감평 서치)", d:1},
+    {t:"민정님께 위임 넘기기 — 원천세·반기결산", d:1},
+  ]},
+  {title:"~6/10 마감", accent:"#b9770e", tasks:[
+    {t:"이인숙 유흥주점 기한후신고 시작 [6/10]", d:0},
+    {t:"원천세 발행 (민정) [6/10]", d:0},
+    {t:"세금계산서 발행 (미수 → 다음 주)", d:0},
+    {t:"운정빌 임대인 상속세 수수료 산정·답장 (이번 주)", d:0},
+  ]},
+  {title:"6월 고정 일정", accent:"#185fa5", tasks:[
+    {t:"6/17 진이 대학병원", d:0},
+    {t:"6/20 주형이 동생 결혼식", d:0},
+    {t:"6/23 사무실 이전", d:0},
+    {t:"구글캘린더 6월 전체 등록", d:0},
+  ]},
+  {title:"기장 · 거래처", accent:"#5f5e5a", tasks:[
+    {t:"종소세 파일 정리 (소명 대비, 이번 주)", d:0},
+    {t:"말리부드림 박미지 사업용카드 교체", d:0},
+    {t:"비욘드아트 기장준비 — 계좌·카드·현금영수증·CMS", d:0},
+    {t:"장시아 기장 해제", d:0},
+    {t:"이정환 기장 제안 (8.8만)", d:0},
+    {t:"투썸플레이스 기장 제안", d:0},
+    {t:"네일코인·이엠컴퍼니 종소세 수수료 요청", d:0},
+    {t:"티엔지에너지 미수금 수령 (투표 후)", d:0},
+    {t:"르모노·까사 성실신고 준비", d:0},
+    {t:"스케줄24·시아엔터 기장 정리", d:0},
+    {t:"김민지 사업자등록 답변 (11만)", d:0},
+    {t:"박창규 사업자등록 준비 (11만)", d:0},
+    {t:"서다민 근로계약서·4대보험", d:0},
+    {t:"디에이치시너지 반기결산 (민정)", d:0},
+  ]},
+  {title:"상속세 — 직접 집중", accent:"#0f6e56", tasks:[
+    {t:"이미숙 계좌 — 매일 15분 (세무조사 대비, 습관)", d:0},
+    {t:"양형균 보충적평가액 준비 (납부 대비)", d:0},
+    {t:"이정대 상속세 시작", d:0},
+    {t:"최길 상속세 신고 준비", d:0},
+    {t:"운정빌 임대인 수수료 산정 (이번 주)", d:0},
+  ]},
+  {title:"마케팅", accent:"#534ab7", tasks:[
+    {t:"블로그 매일 작성 + 자동화 연구", d:0},
+    {t:"쓰레드 영상 1개/일 → 쓰레드 시작", d:0},
+    {t:"크몽 기장광고 유지 + 플러스 3달+ 투자", d:0},
+    {t:"광고업체 전화 (순위 정체 문의)", d:0},
+    {t:"구글·AI 노출(세무회계 경최) 연구", d:0},
+  ]},
+  {title:"개인 · 사무실 이전 (6/23)", accent:"#993c1d", tasks:[
+    {t:"인테리어 업체 알아보기 + 태진이 추천 업체", d:0},
+    {t:"인터넷·전화·짐 이전 절차 (유튜브)", d:0},
+    {t:"턱걸이 기구 해체 → 판매/나눔", d:0},
+    {t:"화물차·인건비 당근 알아보기", d:0},
+    {t:"태닝업체 알아보기·등록", d:0},
+    {t:"공인중개사 과목 등록", d:0},
+  ]},
+];
+
+const $=id=>document.getElementById(id);
+function setStatus(t,c){const s=$("status");s.textContent=t;s.className=c||"";}
+
+async function serverGet(){
+  const r=await fetch(ENDPOINT+"?key="+encodeURIComponent(pw));
+  const txt=(await r.text()).trim();
+  if(txt==="AUTH_FAIL")throw new Error("auth");
+  return txt?JSON.parse(txt):null;
+}
+async function serverPut(){
+  setStatus("저장 중…","busy");
+  try{
+    await fetch(ENDPOINT,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({key:pw,data:state})});
+    localStorage.setItem(CACHE_KEY,JSON.stringify(state));
+    setStatus("저장됨 ✓","ok");
+  }catch(e){
+    localStorage.setItem(CACHE_KEY,JSON.stringify(state));
+    setStatus("오프라인 — 이 기기에만 저장","warn");
+  }
+}
+function scheduleSave(){
+  localStorage.setItem(CACHE_KEY,JSON.stringify(state));
+  if(!CONFIGURED){setStatus("미리보기 — 이 기기에만 저장","warn");return;}
+  setStatus("저장 중…","busy");
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(serverPut,800);
+}
+
+function autosize(el){el.style.height="auto";el.style.height=el.scrollHeight+"px";}
+
+function focusPending(){
+  if(!pendingFocus)return;
+  const sel='[data-ci="'+pendingFocus.ci+'"][data-ti="'+pendingFocus.ti+'"]';
+  setTimeout(()=>{const el=document.querySelector(sel);if(el)el.focus();pendingFocus=null;},20);
+}
+
+function render(){
+  const grid=$("grid");grid.innerHTML="";
+  let done=0,total=0;
+  state.forEach((col,ci)=>{
+    total+=col.tasks.filter(t=>!t.n).length;done+=col.tasks.filter(t=>!t.n&&t.d).length;
+    const cEl=document.createElement("div");cEl.className="col";
+    cEl.style.setProperty("--accent",col.accent||"#b5b2a8");
+    const head=document.createElement("div");head.className="col-head";
+    const ti=document.createElement("input");ti.className="col-title";ti.value=col.title;
+    ti.oninput=()=>{col.title=ti.value;scheduleSave();};
+    const cnt=document.createElement("span");cnt.className="col-count";
+    cnt.textContent=col.tasks.filter(t=>!t.n&&t.d).length+"/"+col.tasks.filter(t=>!t.n).length;
+    const cdel=document.createElement("button");cdel.className="col-del";cdel.textContent="✕";cdel.title="섹션 삭제";
+    cdel.onclick=()=>{if(confirm("'"+col.title+"' 섹션을 삭제할까요?")){state.splice(ci,1);scheduleSave();render();}};
+    head.append(ti,cnt,cdel);cEl.append(head);
+    const ul=document.createElement("ul");
+    col.tasks.forEach((task,ti2)=>{
+      if(hideDone&&!task.n&&task.d)return;
+      const li=document.createElement("li");
+      li.className="task"+(!task.n&&task.d?" done":"")+(task.n?" note":"");
+      if(task.n){
+        const mk=document.createElement("span");mk.className="mk";mk.textContent="—";li.append(mk);
+      }else{
+        const cb=document.createElement("input");cb.type="checkbox";cb.className="cb";cb.checked=!!task.d;
+        cb.onchange=()=>{task.d=cb.checked?1:0;scheduleSave();render();};li.append(cb);
+      }
+      const tx=document.createElement("textarea");tx.className="txt";tx.rows=1;tx.value=task.t;
+      tx.dataset.ci=ci;tx.dataset.ti=ti2;
+      tx.oninput=()=>{task.t=tx.value;autosize(tx);scheduleSave();};
+      tx.addEventListener("keydown",function(e){
+        if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){
+          e.preventDefault();
+          col.tasks.splice(ti2+1,0, task.n?{t:"",n:1}:{t:"",d:0});
+          pendingFocus={ci:ci,ti:ti2+1};
+          scheduleSave();render();focusPending();
+        }
+      });
+      const x=document.createElement("button");x.className="x";x.textContent="✕";
+      x.onclick=()=>{col.tasks.splice(ti2,1);scheduleSave();render();};
+      li.append(tx,x);ul.append(li);requestAnimationFrame(()=>autosize(tx));
+    });
+    cEl.append(ul);
+    const focusLast=()=>setTimeout(()=>{const tas=cEl.querySelectorAll(".txt");if(tas.length)tas[tas.length-1].focus();},30);
+    const addRow=document.createElement("div");addRow.style.display="flex";addRow.style.gap="4px";
+    const add=document.createElement("button");add.className="add";add.textContent="+ 할 일";
+    add.onclick=()=>{col.tasks.push({t:"",d:0});scheduleSave();render();focusLast();};
+    const addN=document.createElement("button");addN.className="add";addN.textContent="+ 메모";
+    addN.onclick=()=>{col.tasks.push({t:"",n:1});scheduleSave();render();focusLast();};
+    addRow.append(add,addN);cEl.append(addRow);grid.append(cEl);
+  });
+  const addCol=document.createElement("button");addCol.className="addcol";addCol.textContent="+ 섹션 추가";
+  addCol.onclick=()=>{state.push({title:"새 섹션",accent:"#8a877d",tasks:[{t:"",d:0}]});scheduleSave();render();};
+  grid.append(addCol);
+  $("pnum").textContent=done+" / "+total;
+}
+
+$("hideDone").onclick=function(){hideDone=!hideDone;
+  this.textContent=hideDone?"완료 항목 보이기":"완료 항목 숨기기";render();};
+$("reset").onclick=function(){
+  if(confirm("모든 내용을 처음 상태로 되돌릴까요? (모든 기기에 적용됩니다)")){
+    state=JSON.parse(JSON.stringify(DEFAULT));scheduleSave();render();}};
+
+function startApp(){
+  $("gate").style.display="none";$("app").style.display="block";
+  const d=new Date();
+  $("today").textContent=d.getFullYear()+"년 "+(d.getMonth()+1)+"월 "+d.getDate()+"일";
+  const cache=localStorage.getItem(CACHE_KEY);
+  if(cache){try{state=JSON.parse(cache);render();}catch(e){}}
+  if(!CONFIGURED){
+    if(!cache){state=JSON.parse(JSON.stringify(DEFAULT));render();}
+    setStatus("미리보기 모드 (서버 미연결)","warn");
+    return;
+  }
+  setStatus("불러오는 중…","busy");
+  serverGet().then(data=>{
+    if(data===null){state=JSON.parse(JSON.stringify(DEFAULT));render();serverPut();}
+    else{state=data;render();setStatus("동기화됨 ✓","ok");}
+  }).catch(e=>{
+    if(e.message==="auth"){sessionStorage.removeItem("gc_pw");pw="";
+      location.reload();}
+    else{setStatus("서버 연결 안 됨 — 이 기기 저장본 표시","warn");
+      if(!cache){state=JSON.parse(JSON.stringify(DEFAULT));render();}}
+  });
+}
+
+function tryGate(){
+  const v=$("pwInput").value.trim();
+  if(!v){return;}
+  pw=v;$("pwErr").textContent="확인 중…";
+  fetch(ENDPOINT+"?key="+encodeURIComponent(pw)).then(r=>r.text()).then(txt=>{
+    if(txt.trim()==="AUTH_FAIL"){$("pwErr").textContent="비밀번호가 틀렸어요.";pw="";return;}
+    sessionStorage.setItem("gc_pw",pw);startApp();
+  }).catch(e=>{$("pwErr").textContent="서버에 연결할 수 없어요. URL을 확인하세요.";});
+}
+$("pwBtn").onclick=tryGate;
+$("pwInput").addEventListener("keydown",e=>{if(e.key==="Enter")tryGate();});
+
+if(!CONFIGURED){startApp();}
+else if(pw){startApp();}
+else{$("pwInput").focus();}
+</script>
+</body>
+</html>
