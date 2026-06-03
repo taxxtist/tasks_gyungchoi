@@ -67,6 +67,15 @@
   .task.done .txt{text-decoration:line-through;color:var(--faint);}
   .mk{flex:none;width:17px;margin-top:1px;color:var(--faint);text-align:center;font-size:13px;line-height:1.4;}
   .note .txt{color:var(--muted);}
+  .task.selected{background:rgba(192,57,58,.12);box-shadow:inset 0 0 0 1px rgba(192,57,58,.4);}
+  #marquee{position:fixed;border:1px solid rgba(192,57,58,.7);background:rgba(192,57,58,.10);
+    z-index:60;pointer-events:none;display:none;border-radius:4px;}
+  #selbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:70;
+    background:#2b2a26;color:#fff;border-radius:11px;padding:9px 12px 9px 16px;
+    display:none;align-items:center;gap:12px;box-shadow:0 6px 22px rgba(0,0,0,.28);font-size:13.5px;}
+  #selbar b{font-weight:600;}
+  #selbar button{font-family:inherit;font-size:13px;border:none;border-radius:8px;cursor:pointer;padding:6px 12px;}
+  #selDel{background:#c0392b;color:#fff;} #selCancel{background:rgba(255,255,255,.16);color:#fff;}
   .x{opacity:0;flex:none;background:none;border:none;cursor:pointer;color:var(--faint);
     font-size:15px;line-height:1;transition:.12s;padding:0 2px;}
   .task:hover .x{opacity:.55;} .x:hover{opacity:1;color:#c0392b;}
@@ -108,11 +117,18 @@
     <div class="grid" id="grid"></div>
   </div>
 
+  <div id="marquee"></div>
+  <div id="selbar">
+    <span><b id="selCount">0</b>개 선택됨</span>
+    <button id="selDel">삭제</button>
+    <button id="selCancel">취소</button>
+  </div>
+
 </div>
 
 <script>
 /* ====== 설정: 본인 Apps Script 웹앱 URL을 여기에 붙여넣으세요 ====== */
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwgSpf-Ato8ceyicv2IEl03wf1u-EPUQSAmyNMh1_uAacCzYOmtlwqy9WKw7lpaSOJy/exec";
+const ENDPOINT = "여기에_APPS_SCRIPT_웹앱_URL_붙여넣기";
 /* ============================================================ */
 
 const CONFIGURED = /^https?:\/\//.test(ENDPOINT) && !/APPS_SCRIPT/.test(ENDPOINT);
@@ -240,6 +256,7 @@ function render(){
       if(hideDone&&!task.n&&task.d)return;
       const li=document.createElement("li");
       li.className="task"+(!task.n&&task.d?" done":"")+(task.n?" note":"");
+      li.dataset.ci=ci;li.dataset.ti=ti2;
       if(task.n){
         const mk=document.createElement("span");mk.className="mk";mk.textContent="—";li.append(mk);
       }else{
@@ -320,6 +337,53 @@ $("pwInput").addEventListener("keydown",e=>{if(e.key==="Enter")tryGate();});
 if(!CONFIGURED){startApp();}
 else if(pw){startApp();}
 else{$("pwInput").focus();}
+
+/* ===== 드래그로 여러 항목 선택 → 일괄 삭제 ===== */
+(function(){
+  const mq=$("marquee"),bar=$("selbar");
+  let sx=0,sy=0,dragging=false;
+  function clearSel(){document.querySelectorAll(".task.selected").forEach(t=>t.classList.remove("selected"));bar.style.display="none";}
+  function isInteractive(el){return el.closest("textarea,input,button,.add,.addcol,.col-title");}
+  document.addEventListener("mousedown",function(e){
+    if(e.button!==0)return;
+    if($("app").style.display==="none")return;
+    if(isInteractive(e.target))return;
+    if(e.target.closest("#selbar"))return;
+    clearSel();
+    dragging=true;sx=e.clientX;sy=e.clientY;
+    mq.style.display="block";mq.style.left=sx+"px";mq.style.top=sy+"px";mq.style.width="0px";mq.style.height="0px";
+  });
+  document.addEventListener("mousemove",function(e){
+    if(!dragging)return;
+    const x=Math.min(e.clientX,sx),y=Math.min(e.clientY,sy);
+    const w=Math.abs(e.clientX-sx),h=Math.abs(e.clientY-sy);
+    mq.style.left=x+"px";mq.style.top=y+"px";mq.style.width=w+"px";mq.style.height=h+"px";
+    const r={left:x,top:y,right:x+w,bottom:y+h};
+    document.querySelectorAll(".task").forEach(t=>{
+      const b=t.getBoundingClientRect();
+      const hit=!(b.right<r.left||b.left>r.right||b.bottom<r.top||b.top>r.bottom);
+      t.classList.toggle("selected",hit);
+    });
+  });
+  document.addEventListener("mouseup",function(e){
+    if(!dragging)return;
+    dragging=false;mq.style.display="none";
+    const n=document.querySelectorAll(".task.selected").length;
+    if(n>0){$("selCount").textContent=n;bar.style.display="flex";}
+    else{bar.style.display="none";}
+  });
+  $("selCancel").onclick=clearSel;
+  $("selDel").onclick=function(){
+    const sel=document.querySelectorAll(".task.selected");
+    if(!sel.length)return;
+    if(!confirm(sel.length+"개 항목을 삭제할까요?"))return;
+    const victims=new Set();
+    sel.forEach(li=>{const ci=+li.dataset.ci,ti=+li.dataset.ti;
+      if(state[ci]&&state[ci].tasks[ti])victims.add(state[ci].tasks[ti]);});
+    state.forEach(col=>{col.tasks=col.tasks.filter(t=>!victims.has(t));});
+    clearSel();scheduleSave();render();
+  };
+})();
 </script>
 </body>
 </html>
