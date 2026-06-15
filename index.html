@@ -143,13 +143,17 @@
     </header>
     <div class="toolbar">
       <button class="btn ghost" id="hideDone">완료 항목 숨기기</button>
-      <button class="btn ghost" id="selMode">항목 선택</button>
       <button class="btn danger" id="delDone" style="display:none;">완료 항목 삭제</button>
-      <button class="btn ghost" id="reset">처음 상태로 초기화</button>
-      <button class="btn ghost" id="exportBtn">내보내기</button>
-      <button class="btn ghost" id="importBtn">불러오기</button>
+      <button class="btn ghost" id="calBtn">📅 캘린더 열기</button>
+      <button class="btn ghost" id="moreBtn" title="더보기">⋯ 더보기</button>
+      <span id="moreMenu" style="display:none;align-items:center;gap:8px;">
+        <button class="btn ghost" id="selMode">항목 선택</button>
+        <button class="btn ghost" id="colsBtn">열: 자동</button>
+        <button class="btn ghost" id="exportBtn">내보내기</button>
+        <button class="btn ghost" id="importBtn">불러오기</button>
+        <button class="btn ghost" id="reset">처음 상태로 초기화</button>
+      </span>
       <input type="file" id="importFile" accept="application/json,.json" style="display:none;">
-      <button class="btn ghost" id="colsBtn">열: 자동</button>
       <span class="hint" style="align-self:center;">· 항목 클릭해서 수정 · 자동 저장</span>
       <span id="status"></span>
     </div>
@@ -509,6 +513,12 @@ $("colsBtn").onclick=function(){
   applyCols();
 };
 applyCols();
+$("calBtn").onclick=()=>window.open("https://calendar.google.com/calendar/u/0/r","_blank");
+$("moreBtn").onclick=function(){
+  const m=$("moreMenu");const open=m.style.display!=="none";
+  m.style.display=open?"none":"inline-flex";
+  this.classList.toggle("on-mode",!open);
+};
 
 function startApp(){
   $("gate").style.display="none";$("app").style.display="block";
