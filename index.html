@@ -618,6 +618,24 @@ $("selMode").onclick=function(){
     updateSelbar();
   });
 })();
+
+/* ===== 드래그 중 화면 가장자리에서 자동 스크롤 ===== */
+(function(){
+  let dragY=0,raf=null;
+  document.addEventListener("dragover",function(e){
+    if(!dragType)return;
+    dragY=e.clientY;
+    if(!raf)raf=requestAnimationFrame(loop);
+  });
+  function loop(){
+    if(!dragType){raf=null;return;}
+    const m=100,vh=window.innerHeight;let d=0;
+    if(dragY<m)d=-Math.max(5,(m-dragY)/3);
+    else if(dragY>vh-m)d=Math.max(5,(dragY-(vh-m))/3);
+    if(d)window.scrollBy(0,d);
+    raf=requestAnimationFrame(loop);
+  }
+})();
 </script>
 </body>
 </html>
