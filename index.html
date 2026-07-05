@@ -110,6 +110,8 @@
   .task.dragging{opacity:.4;}
   .task.dragover-top{box-shadow:inset 0 2px 0 #2b2a26;}
   .task.dragover-bot{box-shadow:inset 0 -2px 0 #2b2a26;}
+  .task.copymode.dragover-top{box-shadow:inset 0 2px 0 #0f6e56;}
+  .task.copymode.dragover-bot{box-shadow:inset 0 -2px 0 #0f6e56;}
   .btn.on-mode{background:#2b2a26;color:#fff;border-color:#2b2a26;}
   .selecting .txt{pointer-events:none;} .selecting .cb{pointer-events:none;}
   .selecting .drag,.selecting .fmt,.selecting .x{display:none!important;}
@@ -339,6 +341,18 @@ function moveTask(src,dstCi,dstTi){
   dragSrc=null;scheduleSave();render();
 }
 
+function linkCopyTask(src,dstCi,dstTi){
+  if(!src||!state[src.ci]||!state[dstCi]){dragSrc=null;return;}
+  const orig=state[src.ci].tasks[src.ti];
+  if(!orig){dragSrc=null;return;}
+  if(!confirm("이 항목을 여기 '연결복사'할까요?\n(체크·글자가 원본과 같이 움직여요)")){dragSrc=null;return;}
+  snapshot();
+  if(!orig.link)orig.link=genLink();
+  if(dstTi<0)dstTi=0;if(dstTi>state[dstCi].tasks.length)dstTi=state[dstCi].tasks.length;
+  state[dstCi].tasks.splice(dstTi,0,{t:orig.t,d:orig.d,n:orig.n,link:orig.link});
+  dragSrc=null;scheduleSave();render();
+}
+
 function moveCol(srcCi,dstCi,after){
   if(srcCi==null||srcCi===dstCi){dragType=null;dragColSrc=null;return;}
   snapshot();
@@ -391,7 +405,8 @@ function render(){
     head.append(gh,ti,cw,cnt,cdel);cEl.append(head);
     const ul=document.createElement("ul");
     ul.addEventListener("dragover",e=>{if(dragType!=="item")return;e.preventDefault();});
-    ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();moveTask(dragSrc,ci,col.tasks.length);});
+    ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();
+      if(e.altKey)linkCopyTask(dragSrc,ci,col.tasks.length);else moveTask(dragSrc,ci,col.tasks.length);});
     col.tasks.forEach((task,ti2)=>{
       if(hideDone&&!task.n&&task.d)return;
       const li=document.createElement("li");
@@ -403,15 +418,17 @@ function render(){
       li.addEventListener("dragstart",e=>{dragType="item";dragSrc={ci:+li.dataset.ci,ti:+li.dataset.ti};
         li.classList.add("dragging");e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain","");e.stopPropagation();});
       li.addEventListener("dragend",()=>{li.draggable=false;li.classList.remove("dragging");dragType=null;
-        document.querySelectorAll(".dragover-top,.dragover-bot").forEach(n=>n.classList.remove("dragover-top","dragover-bot"));});
+        document.querySelectorAll(".dragover-top,.dragover-bot,.copymode").forEach(n=>n.classList.remove("dragover-top","dragover-bot","copymode"));});
       li.addEventListener("dragover",e=>{if(dragType!=="item")return;e.preventDefault();
         const r=li.getBoundingClientRect();const after=(e.clientY-r.top)>r.height/2;
+        li.classList.toggle("copymode",e.altKey);
         li.classList.toggle("dragover-bot",after);li.classList.toggle("dragover-top",!after);});
-      li.addEventListener("dragleave",()=>li.classList.remove("dragover-top","dragover-bot"));
+      li.addEventListener("dragleave",()=>li.classList.remove("dragover-top","dragover-bot","copymode"));
       li.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();e.stopPropagation();
         const r=li.getBoundingClientRect();const after=(e.clientY-r.top)>r.height/2;
-        li.classList.remove("dragover-top","dragover-bot");
-        moveTask(dragSrc,+li.dataset.ci,+li.dataset.ti+(after?1:0));});
+        li.classList.remove("dragover-top","dragover-bot","copymode");
+        const dt=+li.dataset.ti+(after?1:0);
+        if(e.altKey)linkCopyTask(dragSrc,+li.dataset.ci,dt);else moveTask(dragSrc,+li.dataset.ci,dt);});
       li.addEventListener("click",function(){
         if(!selectMode)return;
         li.classList.toggle("selected");updateSelbar();
