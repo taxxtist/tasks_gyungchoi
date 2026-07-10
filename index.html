@@ -402,13 +402,21 @@ function render(){
       cEl.classList.add("dragging");e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain","");});
     cEl.addEventListener("dragend",()=>{cEl.draggable=false;cEl.classList.remove("dragging");dragType=null;
       document.querySelectorAll(".colover-l,.colover-r").forEach(n=>n.classList.remove("colover-l","colover-r"));});
-    cEl.addEventListener("dragover",e=>{if(dragType!=="col")return;e.preventDefault();
-      const r=cEl.getBoundingClientRect();const after=(e.clientX-r.left)>r.width/2;
-      cEl.classList.toggle("colover-r",after);cEl.classList.toggle("colover-l",!after);});
+    cEl.addEventListener("dragover",e=>{
+      if(dragType==="col"){e.preventDefault();
+        const r=cEl.getBoundingClientRect();const after=(e.clientX-r.left)>r.width/2;
+        cEl.classList.toggle("colover-r",after);cEl.classList.toggle("colover-l",!after);return;}
+      if(dragType==="item"){e.preventDefault();}});
     cEl.addEventListener("dragleave",()=>cEl.classList.remove("colover-l","colover-r"));
-    cEl.addEventListener("drop",e=>{if(dragType!=="col")return;e.preventDefault();
-      const r=cEl.getBoundingClientRect();const after=(e.clientX-r.left)>r.width/2;
-      cEl.classList.remove("colover-l","colover-r");moveCol(dragColSrc,ci,after);});
+    cEl.addEventListener("drop",e=>{
+      if(dragType==="col"){e.preventDefault();
+        const r=cEl.getBoundingClientRect();const after=(e.clientX-r.left)>r.width/2;
+        cEl.classList.remove("colover-l","colover-r");moveCol(dragColSrc,ci,after);return;}
+      if(dragType==="item"){e.preventDefault();
+        const dt=col.tasks.length;
+        const multi=dragFromSelected&&document.querySelectorAll(".task.selected").length>1;
+        if(e.altKey){multi?linkCopyMany(ci,dt):linkCopyTask(dragSrc,ci,dt);}
+        else{multi?moveMany(ci,dt):moveTask(dragSrc,ci,dt);}}});
     const head=document.createElement("div");head.className="col-head";
     const gh=document.createElement("span");gh.className="colgrab";gh.textContent="⠿";gh.title="끌어서 섹션 순서 변경";
     gh.addEventListener("mousedown",()=>{cEl.draggable=true;});
@@ -429,7 +437,7 @@ function render(){
     head.append(gh,ti,cw,cnt,cdel);cEl.append(head);
     const ul=document.createElement("ul");
     ul.addEventListener("dragover",e=>{if(dragType!=="item")return;e.preventDefault();});
-    ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();
+    ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();e.stopPropagation();
       const dt=col.tasks.length;
       const multi=dragFromSelected&&document.querySelectorAll(".task.selected").length>1;
       if(e.altKey){multi?linkCopyMany(ci,dt):linkCopyTask(dragSrc,ci,dt);}
