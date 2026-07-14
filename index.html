@@ -423,6 +423,14 @@ function render(){
     gh.addEventListener("mouseup",()=>{cEl.draggable=false;});
     const ti=document.createElement("input");ti.className="col-title";ti.value=col.title;
     ti.oninput=()=>{col.title=ti.value;scheduleSave();};
+    ti.addEventListener("keydown",e=>{
+      if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){
+        e.preventDefault();snapshot();
+        col.tasks.push(e.shiftKey?{t:"",n:1}:{t:"",d:0});
+        pendingFocus={ci:ci,ti:col.tasks.length-1};
+        scheduleSave();render();focusPending();
+      }
+    });
     const cnt=document.createElement("span");cnt.className="col-count";
     cnt.textContent=col.tasks.filter(t=>!t.n&&t.d).length+"/"+col.tasks.filter(t=>!t.n).length;
     const cw=document.createElement("span");cw.className="col-width";
