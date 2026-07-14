@@ -502,7 +502,12 @@ function render(){
       tx.addEventListener("input",()=>{task.t=tx.innerHTML;syncLinkText(task);scheduleSave();});
       tx.addEventListener("keydown",function(e){
         if(e.key==="Escape"){tx.blur();return;}
-        if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){
+        if((e.ctrlKey||e.metaKey)&&e.key==="Enter"&&!e.isComposing){
+          e.preventDefault();snapshot();
+          col.tasks.splice(ti2+1,0, e.shiftKey?{t:"",n:1}:{t:"",d:0});
+          pendingFocus={ci:ci,ti:ti2+1};
+          scheduleSave();render();focusPending();
+        } else if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){
           e.preventDefault();snapshot();
           col.tasks.splice(ti2+1,0, task.n?{t:"",n:1}:{t:"",d:0});
           pendingFocus={ci:ci,ti:ti2+1};
