@@ -531,7 +531,12 @@ function render(){
       const multi=dragFromSelected&&document.querySelectorAll(".task.selected").length>1;
       if(e.altKey){multi?linkCopyMany(ci,dt):linkCopyTask(dragSrc,ci,dt);}
       else{multi?moveMany(ci,dt):moveTask(dragSrc,ci,dt);}});
-    col.tasks.forEach((task,ti2)=>{
+    let order=col.tasks.map((task,idx)=>({task,idx}));
+    if(col.timed){order=order.slice().sort((a,b)=>{
+      const at=a.task.n?"":(a.task.time||""),bt=b.task.n?"":(b.task.time||"");
+      if(at&&bt)return at.localeCompare(bt);
+      if(at)return -1;if(bt)return 1;return a.idx-b.idx;});}
+    order.forEach(o=>{const task=o.task,ti2=o.idx;
       if(hideDone&&!task.n&&task.d)return;
       const li=document.createElement("li");
       li.className="task"+(!task.n&&task.d?" done":"")+(task.n?" note":"");
