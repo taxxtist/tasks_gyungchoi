@@ -64,6 +64,26 @@
   .col-clr{flex:none;width:15px;height:15px;border-radius:50%;border:1px solid rgba(0,0,0,.15);
     cursor:pointer;padding:0;opacity:0;transition:.12s;}
   .col:hover .col-clr{opacity:.85;} .col-clr:hover{opacity:1;transform:scale(1.15);}
+  .col-clock{flex:none;background:none;border:1px solid var(--line2);border-radius:6px;font-size:10px;
+    cursor:pointer;padding:1px 4px;opacity:0;transition:.12s;line-height:1.4;}
+  .col:hover .col-clock{opacity:.7;} .col-clock.on{opacity:1;background:#eef3fb;border-color:#9cc0e8;}
+  .tm{flex:none;border:1px solid var(--line2);border-radius:5px;font-family:inherit;font-size:11px;
+    color:var(--muted);padding:1px 3px;background:var(--surface);width:78px;margin-top:1px;}
+  #planner{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none;
+    align-items:flex-start;justify-content:center;padding:5vh 16px;}
+  .planner-box{background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:88vh;
+    overflow:auto;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+  .planner-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;
+    padding-bottom:12px;border-bottom:1px solid var(--line2);}
+  .planner-head b{font-size:17px;}
+  #planClose{border:none;background:none;font-size:16px;cursor:pointer;color:var(--muted);}
+  .pl-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);}
+  .pl-time{font-size:13px;font-weight:600;color:var(--ink);width:44px;flex:none;font-variant-numeric:tabular-nums;}
+  .pl-dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .pl-txt{flex:1;font-size:14px;line-height:1.4;}
+  .pl-row.done .pl-txt{text-decoration:line-through;color:var(--faint);}
+  .pl-sub{font-size:12px;color:var(--muted);margin:14px 0 2px;font-weight:600;}
+  .pl-empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;line-height:1.6;}
   .col-width{flex:none;display:inline-flex;align-items:center;gap:1px;background:var(--surface);
     border:1px solid var(--line2);border-radius:6px;overflow:hidden;}
   .col-width .cwbtn{border:none;background:none;color:var(--muted);cursor:pointer;font-family:inherit;
@@ -152,6 +172,7 @@
       <button class="btn ghost" id="hideDone">완료 항목 숨기기</button>
       <button class="btn danger" id="delDone" style="display:none;">완료 항목 삭제</button>
       <button class="btn ghost" id="calBtn">📅 캘린더 열기</button>
+      <button class="btn ghost" id="planBtn">🗓 오늘 일정표</button>
       <button class="btn ghost" id="moreBtn" title="더보기">⋯ 더보기</button>
       <span id="moreMenu" style="display:none;align-items:center;gap:8px;">
         <button class="btn ghost" id="selMode">항목 선택</button>
@@ -168,6 +189,12 @@
   </div>
 
   <div id="marquee"></div>
+  <div id="planner">
+    <div class="planner-box">
+      <div class="planner-head"><b>🗓 오늘 일정표</b><button id="planClose">✕</button></div>
+      <div id="plannerBody"></div>
+    </div>
+  </div>
   <div id="selbar">
     <span><b id="selCount">0</b>개 선택됨</span>
     <button id="selDel">삭제</button>
@@ -447,9 +474,11 @@ function render(){
     const cclr=document.createElement("button");cclr.className="col-clr";cclr.title="섹션 색 바꾸기";
     cclr.style.background=col.accent||"#b5b2a8";
     cclr.onclick=()=>{snapshot();let i=accents.indexOf(col.accent);i=(i+1)%accents.length;col.accent=accents[i];scheduleSave();render();};
+    const cclk=document.createElement("button");cclk.className="col-clock"+(col.timed?" on":"");cclk.textContent="🕐";cclk.title="시간표 켜기/끄기";
+    cclk.onclick=()=>{snapshot();col.timed=!col.timed;scheduleSave();render();};
     const cdel=document.createElement("button");cdel.className="col-del";cdel.textContent="✕";cdel.title="섹션 삭제";
     cdel.onclick=()=>{if(confirm("'"+col.title+"' 섹션을 삭제할까요?")){snapshot();state.splice(ci,1);scheduleSave();render();}};
-    head.append(gh,ti,cclr,cw,cnt,cdel);cEl.append(head);
+    head.append(gh,ti,cclr,cclk,cw,cnt,cdel);cEl.append(head);
     const ul=document.createElement("ul");
     ul.addEventListener("dragover",e=>{if(dragType!=="item")return;e.preventDefault();});
     ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();e.stopPropagation();
@@ -500,6 +529,10 @@ function render(){
       }
       if(task.link&&linkCounts[task.link]>=2){
         const lk=document.createElement("span");lk.className="lk";lk.textContent="🔗";lk.title="연결됨 · 다른 곳과 같이 움직여요";li.append(lk);
+      }
+      if(col.timed){
+        const tm=document.createElement("input");tm.type="time";tm.className="tm";tm.value=task.time||"";
+        tm.onchange=()=>{snapshot();task.time=tm.value;scheduleSave();};li.append(tm);
       }
       const tx=document.createElement("div");tx.className="txt";tx.contentEditable="true";
       tx.dataset.ci=ci;tx.dataset.ti=ti2;
@@ -648,6 +681,34 @@ $("colsBtn").onclick=function(){
 };
 applyCols();
 $("calBtn").onclick=()=>window.open("https://calendar.google.com/calendar/u/0/r","_blank");
+function planRow(r){
+  const row=document.createElement("div");row.className="pl-row"+(r.task.d?" done":"");
+  const tm=document.createElement("span");tm.className="pl-time";tm.textContent=r.task.time||"—";
+  const dot=document.createElement("span");dot.className="pl-dot";dot.style.background=r.col.accent||"#b5b2a8";
+  const cb=document.createElement("input");cb.type="checkbox";cb.className="cb";cb.checked=!!r.task.d;
+  cb.onchange=()=>{snapshot();r.task.d=cb.checked?1:0;syncLinkDone(r.task);scheduleSave();render();openPlanner();};
+  const tx=document.createElement("span");tx.className="pl-txt";tx.innerHTML=itemHTML(r.task);
+  row.append(tm,dot,cb,tx);return row;
+}
+function openPlanner(){
+  const rows=[];
+  state.forEach(col=>{if(!col.timed)return;col.tasks.forEach(t=>{if(!t.n)rows.push({col,task:t});});});
+  const timed=rows.filter(r=>r.task.time).sort((a,b)=>a.task.time.localeCompare(b.task.time));
+  const untimed=rows.filter(r=>!r.task.time);
+  const body=$("plannerBody");body.innerHTML="";
+  if(!timed.length&&!untimed.length){
+    body.innerHTML='<div class="pl-empty">섹션 제목 옆 🕐를 켜고, 항목에 시간을 넣으면 여기 시간순으로 모여요.</div>';
+  }
+  timed.forEach(r=>body.appendChild(planRow(r)));
+  if(untimed.length){
+    const h=document.createElement("div");h.className="pl-sub";h.textContent="시간 미정";body.appendChild(h);
+    untimed.forEach(r=>body.appendChild(planRow(r)));
+  }
+  $("planner").style.display="flex";
+}
+$("planBtn").onclick=openPlanner;
+$("planClose").onclick=()=>{$("planner").style.display="none";};
+$("planner").onclick=e=>{if(e.target===$("planner"))$("planner").style.display="none";};
 $("moreBtn").onclick=function(){
   const m=$("moreMenu");const open=m.style.display!=="none";
   m.style.display=open?"none":"inline-flex";
