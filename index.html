@@ -67,6 +67,9 @@
   .col-clock{flex:none;background:none;border:1px solid var(--line2);border-radius:6px;font-size:10px;
     cursor:pointer;padding:1px 4px;opacity:0;transition:.12s;line-height:1.4;}
   .col:hover .col-clock{opacity:.7;} .col-clock.on{opacity:1;background:#eef3fb;border-color:#9cc0e8;}
+  .col.timed{background:linear-gradient(180deg,#eff4fb 0%,var(--surface) 70px);}
+  .col.timed .col-clock{opacity:1;}
+  .planbadge{flex:none;font-size:12px;opacity:.9;cursor:default;}
   .tm{flex:none;border:1px solid var(--line2);border-radius:5px;font-family:inherit;font-size:11px;
     color:var(--muted);padding:1px 3px;background:var(--surface);width:78px;margin-top:1px;}
   #planner{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none;
@@ -425,7 +428,7 @@ function render(){
   state.forEach(c=>c.tasks.forEach(t=>{if(t.link)linkCounts[t.link]=(linkCounts[t.link]||0)+1;}));
   state.forEach((col,ci)=>{
     total+=col.tasks.filter(t=>!t.n).length;done+=col.tasks.filter(t=>!t.n&&t.d).length;
-    const cEl=document.createElement("div");cEl.className="col";
+    const cEl=document.createElement("div");cEl.className="col"+(col.timed?" timed":"");
     cEl.style.setProperty("--accent",col.accent||"#b5b2a8");
     if(col.span&&col.span>1)cEl.style.gridColumn="span "+col.span;
     cEl.addEventListener("dragstart",e=>{if(dragType==="item")return;dragType="col";dragColSrc=ci;
@@ -452,6 +455,7 @@ function render(){
     gh.addEventListener("mousedown",()=>{cEl.draggable=true;});
     gh.addEventListener("mouseup",()=>{cEl.draggable=false;});
     const ti=document.createElement("input");ti.className="col-title";ti.value=col.title;
+    const pbadge=col.timed?(()=>{const pb=document.createElement("span");pb.className="planbadge";pb.textContent="🗓";pb.title="오늘 일정표에 연결된 섹션";return pb;})():null;
     ti.oninput=()=>{col.title=ti.value;scheduleSave();};
     ti.addEventListener("keydown",e=>{
       if((e.ctrlKey||e.metaKey)&&e.key==="Enter"){
@@ -478,7 +482,7 @@ function render(){
     cclk.onclick=()=>{snapshot();col.timed=!col.timed;scheduleSave();render();};
     const cdel=document.createElement("button");cdel.className="col-del";cdel.textContent="✕";cdel.title="섹션 삭제";
     cdel.onclick=()=>{if(confirm("'"+col.title+"' 섹션을 삭제할까요?")){snapshot();state.splice(ci,1);scheduleSave();render();}};
-    head.append(gh,ti,cclr,cclk,cw,cnt,cdel);cEl.append(head);
+    head.append(gh,ti,cclr,cclk,cw,cnt,cdel);if(pbadge)head.insertBefore(pbadge,cclr);cEl.append(head);
     const ul=document.createElement("ul");
     ul.addEventListener("dragover",e=>{if(dragType!=="item")return;e.preventDefault();});
     ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();e.stopPropagation();
