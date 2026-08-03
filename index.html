@@ -100,6 +100,14 @@
   .pl-addbtn{flex:none;font-family:inherit;font-size:13px;border:none;border-radius:7px;
     background:#2b2a26;color:#fff;padding:7px 13px;cursor:pointer;}
   .pl-addbtn:hover{background:#43413b;}
+  .pl-quick{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-6px 0 14px;}
+  .pl-qh{font-size:11.5px;color:var(--muted);}
+  .pl-q{font-family:inherit;font-size:12.5px;border:1px solid var(--line2);border-radius:20px;
+    background:var(--surface);cursor:pointer;padding:4px 11px;}
+  .pl-q-lunch:hover{background:rgba(230,160,60,.15);border-color:#e0a53c;}
+  .pl-q-ex:hover{background:rgba(60,160,100,.15);border-color:#3ca064;}
+  .pl-row.pl-lunch{background:rgba(230,160,60,.12);border-radius:6px;}
+  .pl-row.pl-exercise{background:rgba(60,160,100,.12);border-radius:6px;}
   .col-width{flex:none;display:inline-flex;align-items:center;gap:1px;background:var(--surface);
     border:1px solid var(--line2);border-radius:6px;overflow:hidden;}
   .col-width .cwbtn{border:none;background:none;color:var(--muted);cursor:pointer;font-family:inherit;
@@ -722,7 +730,7 @@ $("colsBtn").onclick=function(){
 applyCols();
 $("calBtn").onclick=()=>window.open("https://calendar.google.com/calendar/u/0/r","_blank");
 function planRow(r){
-  const row=document.createElement("div");row.className="pl-row"+(r.task.d?" done":"");
+  const row=document.createElement("div");row.className="pl-row"+(r.task.d?" done":"")+(r.task.kind?" pl-"+r.task.kind:"");
   const tm=document.createElement("input");tm.className="pl-time-in";tm.value=fmtTime(r.task.time);tm.placeholder="시간";
   tm.addEventListener("focus",()=>{tm.value=r.task.time||"";tm.select();});
   tm.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Escape"){e.preventDefault();tm.blur();}});
@@ -757,6 +765,21 @@ function openPlanner(){
   tin.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();txin.focus();}});
   txin.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();doAdd();}});
   form.append(sel,tin,txin,addb);body.appendChild(form);
+
+  const quick=document.createElement("div");quick.className="pl-quick";
+  const addSpecial=(kind,label)=>{
+    let ti2=state.findIndex(c=>c.timed&&/자투리/.test(c.title||""));
+    if(ti2<0)ti2=state.findIndex(c=>c.timed);
+    if(ti2<0)return;
+    snapshot();state[ti2].tasks.push({t:label,d:0,time:parseTime(tin.value),kind:kind});
+    scheduleSave();render();tin.value="";openPlanner();
+  };
+  const bLunch=document.createElement("button");bLunch.className="pl-q pl-q-lunch";bLunch.textContent="🍚 점심";
+  bLunch.onclick=()=>addSpecial("lunch","🍚 점심");
+  const bEx=document.createElement("button");bEx.className="pl-q pl-q-ex";bEx.textContent="🏃 운동";
+  bEx.onclick=()=>addSpecial("exercise","🏃 운동");
+  const qh=document.createElement("span");qh.className="pl-qh";qh.textContent="빠른 추가 (시간 넣고 클릭 → 자투리로):";
+  quick.append(qh,bLunch,bEx);body.appendChild(quick);
 
   const rows=[];
   state.forEach((col,ci)=>{if(!col.timed)return;col.tasks.forEach((t,ti)=>{if(!t.n)rows.push({col,ci,task:t,ti});});});
@@ -858,10 +881,11 @@ $("selMode").onclick=function(){
 (function(){
   const mq=$("marquee");
   let sx=0,sy=0,dragging=false;
-  function isInteractive(el){return el.closest("textarea,input,button,.add,.addcol,.col-title,.drag,.colgrab,.col-resize,[contenteditable]");}
+  function isInteractive(el){return el.closest("textarea,input,select,button,.add,.addcol,.col-title,.drag,.colgrab,.col-resize,[contenteditable],.planner-box");}
   document.addEventListener("mousedown",function(e){
     if(e.button!==0)return;
     if(selectMode)return;
+    if($("planner").style.display==="flex")return;
     if($("app").style.display==="none")return;
     if(isInteractive(e.target))return;
     if(e.target.closest("#selbar"))return;
