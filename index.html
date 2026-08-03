@@ -80,13 +80,26 @@
     padding-bottom:12px;border-bottom:1px solid var(--line2);}
   .planner-head b{font-size:17px;}
   #planClose{border:none;background:none;font-size:16px;cursor:pointer;color:var(--muted);}
-  .pl-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);}
-  .pl-time{font-size:13px;font-weight:600;color:var(--ink);width:66px;flex:none;font-variant-numeric:tabular-nums;}
+  .pl-row{display:flex;align-items:center;gap:9px;padding:7px 4px;border-bottom:1px solid var(--line);}
+  .pl-time-in{flex:none;width:78px;border:1px solid var(--line2);border-radius:5px;font-family:inherit;
+    font-size:12px;font-weight:600;color:var(--ink);padding:3px 5px;background:var(--surface);text-align:center;}
   .pl-dot{width:9px;height:9px;border-radius:50%;flex:none;}
-  .pl-txt{flex:1;font-size:14px;line-height:1.4;}
+  .pl-txt{flex:1;font-size:14px;line-height:1.4;outline:none;padding:2px 3px;border-radius:5px;}
+  .pl-txt:focus{background:rgba(0,0,0,.04);}
   .pl-row.done .pl-txt{text-decoration:line-through;color:var(--faint);}
+  .pl-x{flex:none;border:none;background:none;color:var(--faint);cursor:pointer;font-size:13px;opacity:0;transition:.12s;}
+  .pl-row:hover .pl-x{opacity:.6;} .pl-x:hover{opacity:1;color:#c0392b;}
   .pl-sub{font-size:12px;color:var(--muted);margin:14px 0 2px;font-weight:600;}
-  .pl-empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;line-height:1.6;}
+  .pl-empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;line-height:1.7;}
+  .pl-add{display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .pl-add select,.pl-add input{font-family:inherit;font-size:13px;border:1px solid var(--line2);
+    border-radius:7px;padding:6px 8px;background:var(--surface);color:var(--ink);outline:none;}
+  .pl-sel{flex:none;max-width:130px;}
+  .pl-tin{flex:none;width:64px;text-align:center;}
+  .pl-txin{flex:1;min-width:120px;}
+  .pl-addbtn{flex:none;font-family:inherit;font-size:13px;border:none;border-radius:7px;
+    background:#2b2a26;color:#fff;padding:7px 13px;cursor:pointer;}
+  .pl-addbtn:hover{background:#43413b;}
   .col-width{flex:none;display:inline-flex;align-items:center;gap:1px;background:var(--surface);
     border:1px solid var(--line2);border-radius:6px;overflow:hidden;}
   .col-width .cwbtn{border:none;background:none;color:var(--muted);cursor:pointer;font-family:inherit;
@@ -557,7 +570,7 @@ function render(){
       if(col.timed){
         const tm=document.createElement("input");tm.type="text";tm.className="tm";tm.value=fmtTime(task.time);tm.placeholder="시간";
         tm.addEventListener("focus",()=>{tm.value=task.time||"";tm.select();});
-        tm.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();tm.blur();}});
+        tm.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Escape"){e.preventDefault();tm.blur();}});
         tm.addEventListener("blur",()=>{const nv=parseTime(tm.value);if(nv!==(task.time||"")){snapshot();task.time=nv;scheduleSave();}tm.value=fmtTime(task.time);});
         li.append(tm);
       }
@@ -710,27 +723,53 @@ applyCols();
 $("calBtn").onclick=()=>window.open("https://calendar.google.com/calendar/u/0/r","_blank");
 function planRow(r){
   const row=document.createElement("div");row.className="pl-row"+(r.task.d?" done":"");
-  const tm=document.createElement("span");tm.className="pl-time";tm.textContent=r.task.time?fmtTime(r.task.time):"—";
-  const dot=document.createElement("span");dot.className="pl-dot";dot.style.background=r.col.accent||"#b5b2a8";
+  const tm=document.createElement("input");tm.className="pl-time-in";tm.value=fmtTime(r.task.time);tm.placeholder="시간";
+  tm.addEventListener("focus",()=>{tm.value=r.task.time||"";tm.select();});
+  tm.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key==="Escape"){e.preventDefault();tm.blur();}});
+  tm.addEventListener("blur",()=>{const nv=parseTime(tm.value);if(nv!==(r.task.time||"")){snapshot();r.task.time=nv;scheduleSave();render();openPlanner();}else{tm.value=fmtTime(r.task.time);}});
+  const dot=document.createElement("span");dot.className="pl-dot";dot.style.background=r.col.accent||"#b5b2a8";dot.title=r.col.title||"";
   const cb=document.createElement("input");cb.type="checkbox";cb.className="cb";cb.checked=!!r.task.d;
   cb.onchange=()=>{snapshot();r.task.d=cb.checked?1:0;syncLinkDone(r.task);scheduleSave();render();openPlanner();};
-  const tx=document.createElement("span");tx.className="pl-txt";tx.innerHTML=itemHTML(r.task);
-  row.append(tm,dot,cb,tx);return row;
+  const tx=document.createElement("div");tx.className="pl-txt";tx.contentEditable="true";tx.innerHTML=itemHTML(r.task);
+  tx.addEventListener("input",()=>{r.task.t=tx.innerHTML;syncLinkText(r.task);scheduleSave();});
+  tx.addEventListener("blur",()=>render());
+  const x=document.createElement("button");x.className="pl-x";x.textContent="✕";x.title="삭제";
+  x.onclick=()=>{snapshot();r.col.tasks.splice(r.ti,1);scheduleSave();render();openPlanner();};
+  row.append(tm,dot,cb,tx,x);return row;
 }
 function openPlanner(){
+  const body=$("plannerBody");body.innerHTML="";
+  const timedCols=state.map((c,i)=>({c,i})).filter(x=>x.c.timed);
+  if(!timedCols.length){
+    body.innerHTML='<div class="pl-empty">먼저 섹션 제목 옆 🕐를 켜서 "시간표 섹션"을 만들어주세요.<br>(딥워크·루틴·자투리처럼요)</div>';
+    $("planner").style.display="flex";return;
+  }
+  const form=document.createElement("div");form.className="pl-add";
+  const sel=document.createElement("select");sel.className="pl-sel";
+  timedCols.forEach(x=>{const o=document.createElement("option");o.value=x.i;o.textContent=x.c.title||"(제목없음)";sel.appendChild(o);});
+  const tin=document.createElement("input");tin.className="pl-tin";tin.placeholder="시간";
+  const txin=document.createElement("input");txin.className="pl-txin";txin.placeholder="할 일 내용 입력 후 Enter";
+  const addb=document.createElement("button");addb.className="pl-addbtn";addb.textContent="+ 추가";
+  const doAdd=()=>{const ci=+sel.value;const tt=txin.value.trim();if(!tt||!state[ci])return;
+    snapshot();state[ci].tasks.push({t:tt,d:0,time:parseTime(tin.value)});scheduleSave();render();
+    txin.value="";tin.value="";openPlanner();};
+  addb.onclick=doAdd;
+  tin.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();txin.focus();}});
+  txin.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();doAdd();}});
+  form.append(sel,tin,txin,addb);body.appendChild(form);
+
   const rows=[];
-  state.forEach(col=>{if(!col.timed)return;col.tasks.forEach(t=>{if(!t.n)rows.push({col,task:t});});});
+  state.forEach((col,ci)=>{if(!col.timed)return;col.tasks.forEach((t,ti)=>{if(!t.n)rows.push({col,ci,task:t,ti});});});
   const timed=rows.filter(r=>r.task.time).sort((a,b)=>a.task.time.localeCompare(b.task.time));
   const untimed=rows.filter(r=>!r.task.time);
-  const body=$("plannerBody");body.innerHTML="";
-  if(!timed.length&&!untimed.length){
-    body.innerHTML='<div class="pl-empty">섹션 제목 옆 🕐를 켜고, 항목에 시간을 넣으면 여기 시간순으로 모여요.</div>';
-  }
-  timed.forEach(r=>body.appendChild(planRow(r)));
+  const list=document.createElement("div");list.className="pl-list";
+  if(!timed.length&&!untimed.length){const e=document.createElement("div");e.className="pl-empty";e.textContent="위에서 일정을 추가해보세요.";list.appendChild(e);}
+  timed.forEach(r=>list.appendChild(planRow(r)));
   if(untimed.length){
-    const h=document.createElement("div");h.className="pl-sub";h.textContent="시간 미정";body.appendChild(h);
-    untimed.forEach(r=>body.appendChild(planRow(r)));
+    const h=document.createElement("div");h.className="pl-sub";h.textContent="시간 미정";list.appendChild(h);
+    untimed.forEach(r=>list.appendChild(planRow(r)));
   }
+  body.appendChild(list);
   $("planner").style.display="flex";
 }
 $("planBtn").onclick=openPlanner;
@@ -827,6 +866,7 @@ $("selMode").onclick=function(){
     if(isInteractive(e.target))return;
     if(e.target.closest("#selbar"))return;
     clearSel();
+    if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
     e.preventDefault();
     document.body.style.userSelect="none";
     dragging=true;sx=e.clientX;sy=e.clientY;
