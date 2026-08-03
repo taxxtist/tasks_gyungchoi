@@ -61,6 +61,9 @@
     border:none;background:none;font-family:inherit;outline:none;width:100%;}
   .col-title:focus{background:rgba(0,0,0,.04);border-radius:6px;}
   .col-count{font-size:12px;color:var(--faint);font-weight:600;white-space:nowrap;}
+  .col-clr{flex:none;width:15px;height:15px;border-radius:50%;border:1px solid rgba(0,0,0,.15);
+    cursor:pointer;padding:0;opacity:0;transition:.12s;}
+  .col:hover .col-clr{opacity:.85;} .col-clr:hover{opacity:1;transform:scale(1.15);}
   .col-width{flex:none;display:inline-flex;align-items:center;gap:1px;background:var(--surface);
     border:1px solid var(--line2);border-radius:6px;overflow:hidden;}
   .col-width .cwbtn{border:none;background:none;color:var(--muted);cursor:pointer;font-family:inherit;
@@ -440,9 +443,13 @@ function render(){
     cwMinus.onclick=()=>{const v=col.span||1;if(v<=1)return;snapshot();col.span=v-1;scheduleSave();render();};
     cwPlus.onclick=()=>{const v=col.span||1;if(v>=3)return;snapshot();col.span=v+1;scheduleSave();render();};
     cw.append(cwMinus,cwNum,cwPlus);
+    const accents=["#c0392b","#b9770e","#0f6e56","#185fa5","#534ab7","#993c1d","#5f5e5a","#b5b2a8"];
+    const cclr=document.createElement("button");cclr.className="col-clr";cclr.title="섹션 색 바꾸기";
+    cclr.style.background=col.accent||"#b5b2a8";
+    cclr.onclick=()=>{snapshot();let i=accents.indexOf(col.accent);i=(i+1)%accents.length;col.accent=accents[i];scheduleSave();render();};
     const cdel=document.createElement("button");cdel.className="col-del";cdel.textContent="✕";cdel.title="섹션 삭제";
     cdel.onclick=()=>{if(confirm("'"+col.title+"' 섹션을 삭제할까요?")){snapshot();state.splice(ci,1);scheduleSave();render();}};
-    head.append(gh,ti,cw,cnt,cdel);cEl.append(head);
+    head.append(gh,ti,cclr,cw,cnt,cdel);cEl.append(head);
     const ul=document.createElement("ul");
     ul.addEventListener("dragover",e=>{if(dragType!=="item")return;e.preventDefault();});
     ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();e.stopPropagation();
