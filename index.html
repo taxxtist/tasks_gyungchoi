@@ -482,11 +482,12 @@ function moveCol(srcCi,dstCi,after){
 
 function render(){
   const grid=$("grid");grid.innerHTML="";
-  let done=0,total=0;
+  let done=0,total=0,failed=0;
   const linkCounts={};
   state.forEach(c=>c.tasks.forEach(t=>{if(t.link)linkCounts[t.link]=(linkCounts[t.link]||0)+1;}));
   state.forEach((col,ci)=>{
     total+=col.tasks.filter(t=>!t.n).length;done+=col.tasks.filter(t=>!t.n&&t.d===1).length;
+    failed+=col.tasks.filter(t=>!t.n&&t.d===2).length;
     const cEl=document.createElement("div");cEl.className="col"+(col.timed?" timed":"");
     cEl.style.setProperty("--accent",col.accent||"#b5b2a8");
     if(col.span&&col.span>1)cEl.style.gridColumn="span "+col.span;
@@ -702,19 +703,19 @@ function render(){
   addCol.onclick=()=>{snapshot();state.push({title:"새 섹션",accent:"#8a877d",tasks:[{t:"",d:0}]});scheduleSave();render();};
   grid.append(addCol);
   $("pnum").textContent=done+" / "+total;
-  const dd=$("delDone");
-  if(done>0){dd.style.display="";dd.textContent="완료 항목 삭제 ("+done+")";}
+  const dd=$("delDone");const resolved=done+failed;
+  if(resolved>0){dd.style.display="";dd.textContent="완료·못함 삭제 ("+resolved+")";}
   else{dd.style.display="none";}
 }
 
 $("hideDone").onclick=function(){hideDone=!hideDone;
   this.textContent=hideDone?"완료 항목 보이기":"완료 항목 숨기기";render();};
 $("delDone").onclick=function(){
-  let n=0;state.forEach(c=>n+=c.tasks.filter(t=>!t.n&&t.d===1).length);
+  let n=0;state.forEach(c=>n+=c.tasks.filter(t=>!t.n&&(t.d===1||t.d===2)).length);
   if(!n)return;
-  if(!confirm("완료된 "+n+"개 항목을 삭제할까요?"))return;
+  if(!confirm("완료·못함 처리된 "+n+"개 항목을 삭제할까요?"))return;
   snapshot();
-  state.forEach(c=>{c.tasks=c.tasks.filter(t=>!(!t.n&&t.d===1));});
+  state.forEach(c=>{c.tasks=c.tasks.filter(t=>!(!t.n&&(t.d===1||t.d===2)));});
   scheduleSave();render();
 };
 $("reset").onclick=function(){
