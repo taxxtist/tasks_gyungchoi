@@ -72,8 +72,23 @@
   .planbadge{flex:none;font-size:12px;opacity:.9;cursor:default;}
   .tm{flex:none;border:1px solid var(--line2);border-radius:5px;font-family:inherit;font-size:11.5px;
     color:var(--ink);padding:2px 4px;background:var(--surface);width:104px;min-width:104px;margin-top:1px;box-sizing:content-box;}
-  #planner{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none;
+  #planner,#archive{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none;
     align-items:flex-start;justify-content:center;padding:5vh 16px;}
+  .col-arc{flex:none;background:none;border:1px solid var(--line2);border-radius:6px;font-size:10px;
+    cursor:pointer;padding:1px 4px;opacity:0;transition:.12s;line-height:1.4;}
+  .col:hover .col-arc{opacity:.7;} .col-arc:hover{opacity:1;background:#efece4;}
+  .arc-box{border:1px solid var(--line2);border-radius:10px;padding:12px 14px;margin-bottom:12px;}
+  .arc-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .arc-ttl{font-weight:700;font-size:14.5px;}
+  .arc-dt{font-size:12px;color:var(--muted);}
+  .arc-btn{margin-left:auto;font-family:inherit;font-size:12px;border:1px solid var(--line2);
+    border-radius:7px;background:var(--surface);cursor:pointer;padding:4px 10px;}
+  .arc-hd .arc-btn+.arc-btn{margin-left:6px;}
+  .arc-btn:hover{background:#efece4;} .arc-del{color:#c0392b;border-color:rgba(192,57,58,.4);}
+  .arc-items{border-top:1px solid var(--line);padding-top:8px;display:flex;flex-direction:column;gap:3px;}
+  .arc-it{font-size:13px;color:var(--ink);line-height:1.45;}
+  .arc-it.done{text-decoration:line-through;color:var(--faint);}
+  .arc-it.failed{text-decoration:line-through;color:#c0392b;opacity:.75;}
   .planner-box{background:var(--surface);border-radius:14px;max-width:560px;width:100%;max-height:88vh;
     overflow:auto;padding:18px 20px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
   .planner-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;
@@ -205,6 +220,7 @@
       <button class="btn danger" id="delDone" style="display:none;">완료 항목 삭제</button>
       <button class="btn ghost" id="calBtn">📅 캘린더 열기</button>
       <button class="btn ghost" id="planBtn">🗓 오늘 일정표</button>
+      <button class="btn ghost" id="archBtn">📦 보관함</button>
       <button class="btn ghost" id="moreBtn" title="더보기">⋯ 더보기</button>
       <span id="moreMenu" style="display:none;align-items:center;gap:8px;">
         <button class="btn ghost" id="selMode">항목 선택</button>
@@ -225,6 +241,12 @@
     <div class="planner-box">
       <div class="planner-head"><b>🗓 오늘 일정표</b><button id="planClose">✕</button></div>
       <div id="plannerBody"></div>
+    </div>
+  </div>
+  <div id="archive">
+    <div class="planner-box">
+      <div class="planner-head"><b>📦 보관함</b><button id="archClose">✕</button></div>
+      <div id="archiveBody"></div>
     </div>
   </div>
   <div id="selbar">
@@ -484,8 +506,9 @@ function render(){
   const grid=$("grid");grid.innerHTML="";
   let done=0,total=0,failed=0;
   const linkCounts={};
-  state.forEach(c=>c.tasks.forEach(t=>{if(t.link)linkCounts[t.link]=(linkCounts[t.link]||0)+1;}));
+  state.forEach(c=>{if(c.archived)return;c.tasks.forEach(t=>{if(t.link)linkCounts[t.link]=(linkCounts[t.link]||0)+1;});});
   state.forEach((col,ci)=>{
+    if(col.archived)return;
     total+=col.tasks.filter(t=>!t.n).length;done+=col.tasks.filter(t=>!t.n&&t.d===1).length;
     failed+=col.tasks.filter(t=>!t.n&&t.d===2).length;
     const cEl=document.createElement("div");cEl.className="col"+(col.timed?" timed":"");
@@ -540,9 +563,11 @@ function render(){
     cclr.onclick=()=>{snapshot();let i=accents.indexOf(col.accent);i=(i+1)%accents.length;col.accent=accents[i];scheduleSave();render();};
     const cclk=document.createElement("button");cclk.className="col-clock"+(col.timed?" on":"");cclk.textContent="🕐";cclk.title="시간표 켜기/끄기";
     cclk.onclick=()=>{snapshot();col.timed=!col.timed;scheduleSave();render();};
+    const carc=document.createElement("button");carc.className="col-arc";carc.textContent="📦";carc.title="보관함으로 보내기";
+    carc.onclick=()=>{if(confirm("'"+(col.title||"제목없음")+"' 섹션을 보관함으로 보낼까요?\n(보드에서 사라지지만 보관함에서 다시 꺼낼 수 있어요)")){snapshot();col.archived=true;col.archivedAt=todayStr();scheduleSave();render();}};
     const cdel=document.createElement("button");cdel.className="col-del";cdel.textContent="✕";cdel.title="섹션 삭제";
     cdel.onclick=()=>{if(confirm("'"+col.title+"' 섹션을 삭제할까요?")){snapshot();state.splice(ci,1);scheduleSave();render();}};
-    head.append(gh,ti,cclr,cclk,cw,cnt,cdel);if(pbadge)head.insertBefore(pbadge,cclr);cEl.append(head);
+    head.append(gh,ti,cclr,cclk,carc,cw,cnt,cdel);if(pbadge)head.insertBefore(pbadge,cclr);cEl.append(head);
     const ul=document.createElement("ul");
     ul.addEventListener("dragover",e=>{if(dragType!=="item")return;e.preventDefault();});
     ul.addEventListener("drop",e=>{if(dragType!=="item")return;e.preventDefault();e.stopPropagation();
@@ -768,7 +793,7 @@ function planRow(r){
 }
 function openPlanner(){
   const body=$("plannerBody");body.innerHTML="";
-  const timedCols=state.map((c,i)=>({c,i})).filter(x=>x.c.timed);
+  const timedCols=state.map((c,i)=>({c,i})).filter(x=>x.c.timed&&!x.c.archived);
   if(!timedCols.length){
     body.innerHTML='<div class="pl-empty">먼저 섹션 제목 옆 🕐를 켜서 "시간표 섹션"을 만들어주세요.<br>(딥워크·루틴·자투리처럼요)</div>';
     $("planner").style.display="flex";return;
@@ -789,8 +814,8 @@ function openPlanner(){
 
   const quick=document.createElement("div");quick.className="pl-quick";
   const addSpecial=(kind,label)=>{
-    let ti2=state.findIndex(c=>c.timed&&/자투리/.test(c.title||""));
-    if(ti2<0)ti2=state.findIndex(c=>c.timed);
+    let ti2=state.findIndex(c=>c.timed&&!c.archived&&/자투리/.test(c.title||""));
+    if(ti2<0)ti2=state.findIndex(c=>c.timed&&!c.archived);
     if(ti2<0)return;
     snapshot();state[ti2].tasks.push({t:label,d:0,time:parseTime(tin.value),kind:kind});
     scheduleSave();render();tin.value="";openPlanner();
@@ -803,7 +828,7 @@ function openPlanner(){
   quick.append(qh,bLunch,bEx);body.appendChild(quick);
 
   const rows=[];
-  state.forEach((col,ci)=>{if(!col.timed)return;col.tasks.forEach((t,ti)=>{if(!t.n)rows.push({col,ci,task:t,ti});});});
+  state.forEach((col,ci)=>{if(col.archived||!col.timed)return;col.tasks.forEach((t,ti)=>{if(!t.n)rows.push({col,ci,task:t,ti});});});
   const timed=rows.filter(r=>r.task.time).sort((a,b)=>a.task.time.localeCompare(b.task.time));
   const untimed=rows.filter(r=>!r.task.time);
   const list=document.createElement("div");list.className="pl-list";
@@ -819,6 +844,36 @@ function openPlanner(){
 $("planBtn").onclick=openPlanner;
 $("planClose").onclick=()=>{$("planner").style.display="none";};
 $("planner").onclick=e=>{if(e.target===$("planner"))$("planner").style.display="none";};
+
+function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function openArchive(){
+  const body=$("archiveBody");body.innerHTML="";
+  const arcs=state.map((c,i)=>({c,i})).filter(x=>x.c.archived)
+    .sort((a,b)=>(b.c.archivedAt||"").localeCompare(a.c.archivedAt||""));
+  if(!arcs.length){body.innerHTML='<div class="pl-empty">보관한 섹션이 없어요.<br>섹션 제목 옆 📦를 누르면 여기로 보관돼요.</div>';$("archive").style.display="flex";return;}
+  arcs.forEach(x=>{
+    const box=document.createElement("div");box.className="arc-box";
+    const hd=document.createElement("div");hd.className="arc-hd";
+    const dot=document.createElement("span");dot.className="pl-dot";dot.style.background=x.c.accent||"#b5b2a8";
+    const ttl=document.createElement("span");ttl.className="arc-ttl";ttl.textContent=x.c.title||"(제목없음)";
+    const dt=document.createElement("span");dt.className="arc-dt";dt.textContent=x.c.archivedAt||"";
+    const rb=document.createElement("button");rb.className="arc-btn";rb.textContent="보드로 되돌리기";
+    rb.onclick=()=>{snapshot();delete x.c.archived;delete x.c.archivedAt;scheduleSave();render();openArchive();};
+    const db=document.createElement("button");db.className="arc-btn arc-del";db.textContent="삭제";
+    db.onclick=()=>{if(confirm("'"+(x.c.title||"")+"' 을 완전히 삭제할까요? (되돌릴 수 없어요)")){snapshot();state.splice(x.i,1);scheduleSave();render();openArchive();}};
+    hd.append(dot,ttl,dt,rb,db);box.appendChild(hd);
+    const ul=document.createElement("div");ul.className="arc-items";
+    x.c.tasks.forEach(t=>{const it=document.createElement("div");
+      it.className="arc-it"+(t.d===1?" done":"")+(t.d===2?" failed":"");
+      it.innerHTML=(t.n?"· ":(t.d===1?"✓ ":t.d===2?"✕ ":"☐ "))+(t.time?'<b>'+fmtTime(t.time)+'</b> ':"")+itemHTML(t);
+      ul.appendChild(it);});
+    box.appendChild(ul);body.appendChild(box);
+  });
+  $("archive").style.display="flex";
+}
+$("archBtn").onclick=openArchive;
+$("archClose").onclick=()=>{$("archive").style.display="none";};
+$("archive").onclick=e=>{if(e.target===$("archive"))$("archive").style.display="none";};
 $("moreBtn").onclick=function(){
   const m=$("moreMenu");const open=m.style.display!=="none";
   m.style.display=open?"none":"inline-flex";
@@ -906,7 +961,7 @@ $("selMode").onclick=function(){
   document.addEventListener("mousedown",function(e){
     if(e.button!==0)return;
     if(selectMode)return;
-    if($("planner").style.display==="flex")return;
+    if($("planner").style.display==="flex"||$("archive").style.display==="flex")return;
     if($("app").style.display==="none")return;
     if(isInteractive(e.target))return;
     if(e.target.closest("#selbar"))return;
